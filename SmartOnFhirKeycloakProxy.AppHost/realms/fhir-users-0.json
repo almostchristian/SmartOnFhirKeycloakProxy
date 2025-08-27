@@ -1,0 +1,121 @@
+{
+  "realm": "fhir",
+  "users": [
+    {
+      "id": "75b2bf11-5b3d-41cc-b379-e4053f914daa",
+      "username": "user1",
+      "firstName": "1st",
+      "lastName": "User",
+      "email": "user1@synapxe.sg",
+      "emailVerified": true,
+      "createdTimestamp": 1715203376448,
+      "enabled": true,
+      "totp": false,
+      "credentials": [
+        {
+          "id": "9e002386-b0bb-4d1b-a051-5f684f1baac6",
+          "type": "password",
+          "userLabel": "My password",
+          "createdDate": 1715203387396,
+          "secretData": "{\"value\":\"3JgcmK4MZgKQtEIcqfrrR+INIhDJdOJ/FFrM0JAhtcazpQkvd2s5BCAEmmBlVAHH40JpP8zD/uZQEqTBHZvssQ==\",\"salt\":\"CJMklLYKN68Efch0O+p+mg==\",\"additionalParameters\":{}}",
+          "credentialData": "{\"hashIterations\":210000,\"algorithm\":\"pbkdf2-sha512\",\"additionalParameters\":{}}"
+        }
+      ],
+      "disableableCredentialTypes": [],
+      "requiredActions": [],
+      "realmRoles": [],
+      "notBefore": 0,
+      "groups": [],
+      "attributes": {
+        "tenant": 1
+      }
+    },
+    {
+      "id": "75b2bf11-5b3d-41dd-b379-e4053f914daa",
+      "username": "user2",
+      "firstName": "2nd",
+      "lastName": "User",
+      "email": "user2@synapxe.sg",
+      "emailVerified": true,
+      "createdTimestamp": 1715203376448,
+      "enabled": true,
+      "totp": false,
+      "credentials": [
+        {
+          "id": "9e002386-b0aa-4d1a-a051-5f684f1baac6",
+          "type": "password",
+          "userLabel": "My password",
+          "createdDate": 1715203387396,
+          "secretData": "{\"value\":\"3JgcmK4MZgKQtEIcqfrrR+INIhDJdOJ/FFrM0JAhtcazpQkvd2s5BCAEmmBlVAHH40JpP8zD/uZQEqTBHZvssQ==\",\"salt\":\"CJMklLYKN68Efch0O+p+mg==\",\"additionalParameters\":{}}",
+          "credentialData": "{\"hashIterations\":210000,\"algorithm\":\"pbkdf2-sha512\",\"additionalParameters\":{}}"
+        }
+      ],
+      "disableableCredentialTypes": [],
+      "requiredActions": [],
+      "realmRoles": [],
+      "notBefore": 0,
+      "groups": [],
+      "attributes": {
+        "tenant": 167
+      }
+    },
+    {
+      "id": "75b2bf11-5b3d-41aa-b379-e4053f914daa",
+      "username": "adm1",
+      "firstName": "1st",
+      "lastName": "Admin",
+      "email": "adm1@synapxe.sg",
+      "emailVerified": true,
+      "createdTimestamp": 1715203376448,
+      "enabled": true,
+      "totp": false,
+      "credentials": [
+        {
+          "id": "9e002386-b000-4d1a-a051-5f684f1baac6",
+          "type": "password",
+          "userLabel": "My password",
+          "createdDate": 1715203387396,
+          "secretData": "{\"value\":\"3JgcmK4MZgKQtEIcqfrrR+INIhDJdOJ/FFrM0JAhtcazpQkvd2s5BCAEmmBlVAHH40JpP8zD/uZQEqTBHZvssQ==\",\"salt\":\"CJMklLYKN68Efch0O+p+mg==\",\"additionalParameters\":{}}",
+          "credentialData": "{\"hashIterations\":210000,\"algorithm\":\"pbkdf2-sha512\",\"additionalParameters\":{}}"
+        }
+      ],
+      "disableableCredentialTypes": [],
+      "requiredActions": [],
+      "realmRoles": [ "admin-role" ],
+      "notBefore": 0,
+      "groups": [],
+      "attributes": {
+        "tenant": 1
+      }
+    },
+    {
+      "id": "75b2bf22-5b3d-41aa-b379-e4053f914daa",
+      "username": "adm2",
+      "firstName": "2nd",
+      "lastName": "Admin",
+      "email": "adm2@synapxe.sg",
+      "emailVerified": true,
+      "createdTimestamp": 1715203376448,
+      "enabled": true,
+      "totp": false,
+      "credentials": [
+        {
+          "id": "9e002386-b000-4d1a-a051-5f684f1bbbc6",
+          "type": "password",
+          "userLabel": "My password",
+          "createdDate": 1715203387396,
+          "secretData": "{\"value\":\"3JgcmK4MZgKQtEIcqfrrR+INIhDJdOJ/FFrM0JAhtcazpQkvd2s5BCAEmmBlVAHH40JpP8zD/uZQEqTBHZvssQ==\",\"salt\":\"CJMklLYKN68Efch0O+p+mg==\",\"additionalParameters\":{}}",
+          "credentialData": "{\"hashIterations\":210000,\"algorithm\":\"pbkdf2-sha512\",\"additionalParameters\":{}}"
+        }
+      ],
+      "disableableCredentialTypes": [],
+      "requiredActions": [],
+      "realmRoles": [ "admin-role" ],
+      "notBefore": 0,
+      "groups": [],
+      "attributes": {
+        "tenant": 167
+      }
+    }
+  ]
+}

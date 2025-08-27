@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<!-- Important: must specify -->
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <title>FhirEngine Test Overview</title>
+    <script type="module"
+            src="/rapidoc-min.js"></script>
+    <!--<script type="module"
+            src="https://unpkg.com/rapidoc/dist/rapidoc.js"></script>-->
+</head>
+<body>
+    <rapi-doc id="thedoc"
+              spec-url="/swagger/v1/swagger.json"
+              show-header="true"
+              theme="dark"
+              schema-style="table"
+              render-style="focused"
+              allow-authentication="true"
+              show-method-in-nav-bar="as-colored-block">
+        <div slot="overview">This is an overview of FhirEngine</div>
+        <div slot="auth" style="width:100%; display: flex; flex-direction:column;">
+            <div style="margin:32px 0 16px 0; color:#777; font-weight:bold">
+                Below form is used for setting the <span style="font-family:'Roboto Mono'">launch</span> parameter of the auth endpoint
+            </div>
+            <table>
+                <tr>
+                    <td>Patient</td>
+                    <td>
+                        <input class='size txt' id='patient' value="" type='text' placeholder='Patient Resource Id' spellcheck='false' oninput="updateLaunchQuery(event)" style="width:290px">
+                    </td>
+                </tr>
+                <tr>
+                    <td>Encounter</td>
+                    <td>
+                        <input class='size txt' id='encounter' value="" type='text' placeholder='Encounter Resource Id' spellcheck='false' oninput="updateLaunchQuery(event)" style="width:290px">
+                    </td>
+                </tr>
+                <tr>
+                    <td>Tenant</td>
+                    <td>
+                        <input class='size txt' id='tenant' value="" type='number' placeholder='Tenant Id' spellcheck='false' oninput="updateLaunchQuery(event)" style="width:290px">
+                    </td>
+                </tr>
+                <!--<tr>
+                    <td>Practitioner</td>
+                    <td>
+                        <input class='size txt' id='practitioner' value="" type='text' placeholder='Practitioner Resource Id' spellcheck='false' oninput="updateLaunchQuery(event)" style="width:290px">
+                    </td>
+                </tr>-->
+                <tr>
+                    <td colspan="2">
+                        <textarea class="form-control" rows="5" id="launchContext" readonly style="width:700px">
+                        </textarea>
+                    </td>
+                </tr>
+            </table>
+        </div>
+    </rapi-doc>
+
+    <script>
+        function updateLaunchQuery(e) {
+            var launchContext = {};
+            const docEl = document.getElementById('thedoc');
+
+            if (document.getElementById('patient').value.length) {
+                launchContext.patient = document.getElementById('patient').value;
+            }
+
+            if (document.getElementById('encounter').value.length) {
+                launchContext.encounter = document.getElementById('encounter').value;
+            }
+
+            //if (document.getElementById('practitioner').value.length) {
+            //    launchContext.practioner = document.getElementById('practitioner').value;
+            //}
+
+            if (document.getElementById('tenant').value.length) {
+                launchContext.tenant = document.getElementById('tenant').value;
+            }
+
+            var queryString = encodeURIComponent(btoa(JSON.stringify(launchContext)));
+
+            document.getElementById('launchContext').value = JSON.stringify(launchContext, undefined, 2);
+            document.getElementById('thedoc').shadowRoot.getElementById('input-oidc-authorizationCode-launch').value = queryString;
+
+            //$('#launchUrl').val($('#appurl').val() + '?' + queryString);
+        }
+
+        setTimeout(() => updateLaunchQuery(event), 2000);
+    </script>
+</body>
+</html>

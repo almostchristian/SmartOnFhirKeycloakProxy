@@ -1,0 +1,27 @@
+@SmartOnFhirProxy_HostAddress = http://localhost:5294
+@baseUrl=https://localhost:7371
+@access_key=eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICJiUy1VYmtJZ1dyZGpnNURVaHhHeHZwaGMyUTJCbmIzZDRmSFJpNGxGRzc4In0.eyJleHAiOjE3NTYyNzkxODUsImlhdCI6MTc1NjI3ODg4NSwianRpIjoib25sdHJvOjk2ZjY3NjJkLWQyNTctMTAxZi02YmZlLWU1MzRiNDExODg5NCIsImlzcyI6Imh0dHA6Ly9sb2NhbGhvc3Q6ODA4MC9yZWFsbXMvZmhpciIsImF1ZCI6ImVoci1hcHAiLCJ0eXAiOiJCZWFyZXIiLCJhenAiOiJlaHItYXBwIiwic2lkIjoiMjdiY2JlYmItYzVhYy00NTk0LThjOGItNmMyMzNiZmE4N2ZmIiwic2NvcGUiOiJ1c2VyL0FwcG9pbnRtZW50LmNydWRzIiwiZW1haWwiOiJhZG0yQHN5bmFweGUuc2ciLCJ0ZW5hbnQiOjJ9.uGRu3oOCMnk4HgoZSQMjFkJqc-1MtQYwnhzpFVyCsgKmqy3OUiq45kQ1NESltE7K4ABQYxrQ0mrg85Yem-6GQjm1r793RO91kKqPRbSFKdSIc1enB7JYNlN15th9RXyEagUS8BUH88v3ergGvadf93agPZ4LG19rigAk02SOmd7-Uth2sG7p51ImyPupBW7cQu1SVeZJljHzEcKxMW6jGQsaZ8Og2dTyRIrjl4zq1UFyjhw4FIE_q2OZTexVY1zhwOFgJEoDRY2uxs15uq8f-2MMLbque9xXa79b9AdbIOobEiKU4i8G71FKdnRrjfP0WDDCD5QqSOZzo1HijXU6OA
+
+#### Get user token no fhir scope
+POST {{SmartOnFhirProxy_HostAddress}}/token
+Content-Type: application/x-www-form-urlencoded
+
+grant_type=password&client_id=smart-app&username=user1&password=test&tenant=1
+
+#### Get user token with fhir scopes
+POST {{SmartOnFhirProxy_HostAddress}}/token
+Content-Type: application/x-www-form-urlencoded
+
+grant_type=password&client_id=smart-app&scope=patient/Appointment.crus+launch/patient&username=user1&password=test&patient=abcdefg&tenant=1
+
+#### Get admin user token
+POST {{SmartOnFhirProxy_HostAddress}}/token
+Content-Type: application/x-www-form-urlencoded
+
+grant_type=password&client_id=ehr-app&scope=user/Appointment.cruds&username=adm2&password=test&tenant=2
+
+#### User INfo Request:
+### @name metadata request
+
+GET {{baseUrl}}/user
+Authorization: Bearer {{access_key}}
