@@ -25,11 +25,11 @@ sequenceDiagram
     activate EHR
 
  
-    EHR->Smart App:http://smart-app?launch=**<launch_context>**& iss=**http://fhirnexusapp**
+    EHR->Smart App:http://smart-app?launch=**<launch_context>**& iss=**http://fhir_server**
 
     deactivate EHR
     activate Smart App
-    Smart App-->FHIR Resource API: Get http://fhirnexusapp** /.well-known/smart-configuration**
+    Smart App-->FHIR Resource API: Get http://fhir_server** /.well-known/smart-configuration**
     Smart App->Smart Proxy:Redirect to [/auth?launch=**<launch_context>**&client_id=**client-id**& response_type=**code**&state=**state**&scope=**patient/*.cruds**& redirect_uri=**http://smart-app/redir**]
     deactivate Smart App
     activate Smart Proxy
@@ -92,3 +92,16 @@ sequenceDiagram
     deactivate Smart App
 
 ```
+
+### Running the application
+
+The project requires .NET 8.0 SDK or later to build and uses .NET Aspire orchestration which requires a compatible container runtime such as Docker or Podman.
+
+Have the `SmartOnFhirKeycloakProxy.AppHost` project set as startup project and run it. In the application dashboard, run the link for the `SmartOnFhirKeycloakProxy.ApiService` project which will link to the Rapidoc page.
+Select the appropriate scopes and click the Get Token button.
+
+Available scopes for client_id `ehr-app`: `user/Appointment.cruds`
+
+Available scopes for client_id `smart-app`: `launch/patient`, `patient/Appointmet.crus`
+
+Available users: `user1`, `user2`, `adm1` and `adm2` - all have the password `test`. 
