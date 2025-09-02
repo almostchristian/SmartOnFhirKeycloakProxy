@@ -1,0 +1,25 @@
+@baseUrl=https://localhost:56192
+
+#### Get user token no fhir scope
+POST {{SmartOnFhirProxy_HostAddress}}/token
+Content-Type: application/x-www-form-urlencoded
+
+grant_type=password&client_id=smart-app&username=user1&password=test&tenant=1
+
+#### Get user token with fhir scopes
+POST {{SmartOnFhirProxy_HostAddress}}/token
+Content-Type: application/x-www-form-urlencoded
+
+grant_type=password&client_id=smart-app&scope=patient/Appointment.crus+launch/patient&username=user1&password=test&patient=abcdefg&tenant=1
+
+#### Get admin user token
+POST {{SmartOnFhirProxy_HostAddress}}/token
+Content-Type: application/x-www-form-urlencoded
+
+grant_type=password&client_id=ehr-app&scope=user/Appointment.cruds&username=adm2&password=test&tenant=2
+
+#### User INfo Request:
+### @name metadata request
+
+GET {{baseUrl}}/user
+Authorization: Bearer {{access_key}}

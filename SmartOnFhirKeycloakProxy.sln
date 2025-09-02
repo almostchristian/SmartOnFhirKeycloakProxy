@@ -1,6 +1,6 @@
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
-VisualStudioVersion = 17.14.36414.22 d17.14
+VisualStudioVersion = 17.14.36414.22
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SmartOnFhirKeycloakProxy.AppHost", "SmartOnFhirKeycloakProxy.AppHost\SmartOnFhirKeycloakProxy.AppHost.csproj", "{9F124EFA-B456-44E4-B1CF-8189DAD12AE0}"
 EndProject
@@ -9,6 +9,8 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SmartOnFhirKeycloakProxy.ApiService", "SmartOnFhirKeycloakProxy.ApiService\SmartOnFhirKeycloakProxy.ApiService.csproj", "{9F55205F-6DAF-696B-DCE6-FC3E295EDB4A}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SmartOnFhirProxy", "SmartOnFhirProxy\SmartOnFhirProxy.csproj", "{C31C6DA3-7C17-F502-F4CE-6B4C2355960D}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SmartClaimsProvider", "SmartClaimsProvider\SmartClaimsProvider.csproj", "{3A23A5A7-91DD-2E85-6E1D-115F49C04F8E}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -32,6 +34,10 @@ Global
 		{C31C6DA3-7C17-F502-F4CE-6B4C2355960D}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{C31C6DA3-7C17-F502-F4CE-6B4C2355960D}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{C31C6DA3-7C17-F502-F4CE-6B4C2355960D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3A23A5A7-91DD-2E85-6E1D-115F49C04F8E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3A23A5A7-91DD-2E85-6E1D-115F49C04F8E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3A23A5A7-91DD-2E85-6E1D-115F49C04F8E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3A23A5A7-91DD-2E85-6E1D-115F49C04F8E}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

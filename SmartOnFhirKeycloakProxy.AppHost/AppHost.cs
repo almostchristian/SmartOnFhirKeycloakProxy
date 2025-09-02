@@ -18,4 +18,6 @@ var apiService = builder.AddProject<Projects.SmartOnFhirKeycloakProxy_ApiService
     .WithReference(keycloak)
     .WithReference(proxy);
 
+builder.AddAzureFunctionsProject<Projects.SmartClaimsProvider>("smartclaimsprovider");
+
 builder.Build().Run();

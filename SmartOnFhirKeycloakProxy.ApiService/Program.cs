@@ -5,6 +5,7 @@ using Microsoft.OpenApi.Interfaces;
 var builder = WebApplication.CreateBuilder(args);
 
 string keyCloakProxyUrl = builder.Configuration.GetValue<string>("Services:smartonfhirproxy:http:0");
+string defaultClientId = builder.Configuration.GetValue<string>("DefaultClientId") ?? "ehr-app";
 var openApiSecurity = new Microsoft.OpenApi.Models.OpenApiSecurityScheme
 {
     Name = "oidc",
@@ -12,8 +13,8 @@ var openApiSecurity = new Microsoft.OpenApi.Models.OpenApiSecurityScheme
     Type = Microsoft.OpenApi.Models.SecuritySchemeType.OAuth2,
     Extensions = new Dictionary<string, IOpenApiExtension>
     {
-        { "x-client-id", new Microsoft.OpenApi.Any.OpenApiString("ehr-app") },
-        { "x-default-scopes", new Microsoft.OpenApi.Any.OpenApiArray(){ new Microsoft.OpenApi.Any.OpenApiString("user/Appointment.cruds") } }
+        { "x-client-id", new Microsoft.OpenApi.Any.OpenApiString(defaultClientId) },
+        { "x-default-scopes", new Microsoft.OpenApi.Any.OpenApiArray(){ new Microsoft.OpenApi.Any.OpenApiString("patient/Appointment.crus"), new Microsoft.OpenApi.Any.OpenApiString("launch/patient") } }
     },
     Flows = new Microsoft.OpenApi.Models.OpenApiOAuthFlows
     {
@@ -54,8 +55,16 @@ builder.Services
     .AddKeycloakJwtBearer("keycloak", "fhir", o =>
     {
         o.RequireHttpsMetadata = false;
+        o.MetadataAddress = $"{keyCloakProxyUrl}/.well-known/openid-configuration";
         o.TokenValidationParameters ??= new Microsoft.IdentityModel.Tokens.TokenValidationParameters();
-        o.TokenValidationParameters.ValidAudiences = [ "smart-app", "ehr-app" ];
+        o.TokenValidationParameters.ValidAudiences = ["smart-app", defaultClientId];
+        o.Events ??= new();
+        o.Events.OnAuthenticationFailed += c =>
+        {
+            var logger = c.HttpContext.RequestServices.GetRequiredService<ILoggerFactory>().CreateLogger("KeycloakJwtBearer");
+            logger.LogError(c.Exception, "Authentication failed");
+            return Task.CompletedTask;
+        };
     });
 builder.Services.AddAuthorization();
 
