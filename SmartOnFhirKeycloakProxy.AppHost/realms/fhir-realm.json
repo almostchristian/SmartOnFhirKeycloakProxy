@@ -661,7 +661,7 @@
           "protocolMapper": "oidc-audience-mapper",
           "consentRequired": false,
           "config": {
-            "included.client.audience": "ehr-app",
+            "included.client.audience": "http://fhirnexusapp",
             "id.token.claim": "false",
             "lightweight.claim": "false",
             "introspection.token.claim": "true",
@@ -830,7 +830,7 @@
           "protocolMapper": "oidc-audience-mapper",
           "consentRequired": false,
           "config": {
-            "included.client.audience": "ehr-app",
+            "included.client.audience": "http://fhirnexusapp",
             "id.token.claim": "false",
             "lightweight.claim": "true",
             "introspection.token.claim": "true",
@@ -990,7 +990,7 @@
       ],
       "notBefore": 0,
       "bearerOnly": false,
-      "consentRequired": false,
+      "consentRequired": true,
       "standardFlowEnabled": true,
       "implicitFlowEnabled": false,
       "directAccessGrantsEnabled": true,
@@ -1022,7 +1022,7 @@
           "protocolMapper": "oidc-audience-mapper",
           "consentRequired": false,
           "config": {
-            "included.client.audience": "smart-app",
+            "included.client.audience": "http://fhirnexusapp",
             "id.token.claim": "false",
             "lightweight.claim": "false",
             "introspection.token.claim": "true",

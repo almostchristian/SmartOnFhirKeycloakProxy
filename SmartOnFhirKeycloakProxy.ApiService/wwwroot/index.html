@@ -79,10 +79,10 @@
                 launchContext.tenant = document.getElementById('tenant').value;
             }
 
-            var queryString = encodeURIComponent(btoa(JSON.stringify(launchContext)));
+            var queryString = 'aud=http://fhirnexusapp&prompt=consent&launch=' + encodeURIComponent(btoa(JSON.stringify(launchContext)));
 
             document.getElementById('launchContext').value = JSON.stringify(launchContext, undefined, 2);
-            document.getElementById('thedoc').shadowRoot.getElementById('input-oidc-authorizationCode-launch').value = queryString;
+            document.getElementById('thedoc').shadowRoot.getElementById('input-oidc-authorizationCode-additional-params').value = queryString;
 
             //$('#launchUrl').val($('#appurl').val() + '?' + queryString);
         }

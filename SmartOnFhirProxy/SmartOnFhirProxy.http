@@ -9,3 +9,10 @@ GET {{SmartOnFhirProxy_HostAddress}}/todos/1
 Accept: application/json
 
 ###
+
+GET https://vendorservices.epic.com/interconnect-amcurprd-oauth/api/FHIR/R4/.well-known/smart-configuration
+Accept: application/json
+###
+
+GET https://fhir.epic.com/interconnect-fhir-oauth/api/FHIR/R4/.well-known/smart-configuration
+Accept: application/json

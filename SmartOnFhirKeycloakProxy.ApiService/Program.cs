@@ -1,11 +1,13 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.Extensions.DependencyInjection;
+using Microsoft.IdentityModel.JsonWebTokens;
+using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Interfaces;
 
 var builder = WebApplication.CreateBuilder(args);
 
-string keyCloakProxyUrl = builder.Configuration.GetValue<string>("Services:smartonfhirproxy:http:0");
+string smartProxyUrl = builder.Configuration.GetValue<string>("Services:smartonfhirproxy:http:0");
 string defaultClientId = builder.Configuration.GetValue<string>("DefaultClientId") ?? "ehr-app";
+string audience = builder.Configuration.GetValue<string>("Audience") ?? builder.Configuration.GetValue<string>("DefaultClientId") ?? "http://fhirnexusapp";
 var openApiSecurity = new Microsoft.OpenApi.Models.OpenApiSecurityScheme
 {
     Name = "oidc",
@@ -20,8 +22,8 @@ var openApiSecurity = new Microsoft.OpenApi.Models.OpenApiSecurityScheme
     {
         AuthorizationCode = new Microsoft.OpenApi.Models.OpenApiOAuthFlow
         {
-            AuthorizationUrl = new Uri($"{keyCloakProxyUrl}/auth"),
-            TokenUrl = new Uri($"{keyCloakProxyUrl}/token"),
+            AuthorizationUrl = new Uri($"{smartProxyUrl}/auth"),
+            TokenUrl = new Uri($"{smartProxyUrl}/token"),
             Scopes = new Dictionary<string, string>
             {
                 { "patient/Appointment.crus", "Create/Read Appointment for Patient" },
@@ -34,7 +36,7 @@ var openApiSecurity = new Microsoft.OpenApi.Models.OpenApiSecurityScheme
         },
         Password = new Microsoft.OpenApi.Models.OpenApiOAuthFlow
         {
-            TokenUrl = new Uri($"{keyCloakProxyUrl}/token"),
+            TokenUrl = new Uri($"{smartProxyUrl}/token"),
             Scopes = new Dictionary<string, string>
             {
                 { "patient/Appointment.crus", "Create/Read Appointment for Patient" },
@@ -52,12 +54,13 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(o => o.SwaggerGeneratorOptions.SecuritySchemes["oidc"] = openApiSecurity);
 builder.Services
     .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-    .AddKeycloakJwtBearer("keycloak", "fhir", o =>
+    .AddJwtBearer(JwtBearerDefaults.AuthenticationScheme, "keycloak", o =>
     {
         o.RequireHttpsMetadata = false;
-        o.MetadataAddress = $"{keyCloakProxyUrl}/.well-known/openid-configuration";
-        o.TokenValidationParameters ??= new Microsoft.IdentityModel.Tokens.TokenValidationParameters();
-        o.TokenValidationParameters.ValidAudiences = ["smart-app", defaultClientId];
+        o.TokenHandlers.Clear();
+        o.TokenHandlers.Add(new ExpiryValidatingJsonWebTokenHandler());
+        o.MetadataAddress = $"{smartProxyUrl}/.well-known/openid-configuration";
+        o.Audience = audience;
         o.Events ??= new();
         o.Events.OnAuthenticationFailed += c =>
         {
@@ -99,3 +102,18 @@ app.MapGet("/user", (HttpContext context) =>
 app.MapDefaultEndpoints();
 
 app.Run();
+
+internal class ExpiryValidatingJsonWebTokenHandler : JsonWebTokenHandler
+{
+    public override async Task<TokenValidationResult> ValidateTokenAsync(SecurityToken token, TokenValidationParameters validationParameters)
+    {
+        var result = await base.ValidateTokenAsync(token, validationParameters);
+
+        if (result.IsValid && result.Claims.TryGetValue("sid", out var sid) && sid is string sessionId)
+        {
+            // check if valid
+        }
+
+        return result;
+    }
+}

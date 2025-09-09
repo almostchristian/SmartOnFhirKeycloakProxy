@@ -3,10 +3,12 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.JsonWebTokens;
 using Microsoft.IdentityModel.Tokens;
+using System.Buffers;
 using System.Collections.Frozen;
 using System.Diagnostics;
 using System.Net;
 using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Text.Json.Serialization.Metadata;
@@ -16,8 +18,10 @@ var builder = WebApplication.CreateSlimBuilder(args);
 var keycloakUrl = builder.Configuration.GetConnectionString("keycloak");
 var azureConfig = builder.Configuration.GetSection("Azure").Get<AzureConfig>();
 var realm = builder.Configuration.GetValue<string>("KeycloakRealm") ?? "fhir";
+var epicLaunchClientId = builder.Configuration.GetValue<string>("EpicLaunchClientId");
+var epicOAuthUrl = builder.Configuration.GetValue<string>("EpicOAuthUrl");
 bool rewriteJwt = builder.Configuration.GetValue<bool>("IssueRewrittenJwtTokens");
-string[] copiedJwtClaims = ["aud", "iss", "exp", "iat", "azp", "email", "name", "sid", "oid"];
+string[] copiedJwtClaims = ["iat", "azp", "email", "name", "sid", "oid"];
 
 builder.AddServiceDefaults();
 builder.Services.ConfigureHttpJsonOptions(options =>
@@ -113,16 +117,103 @@ else
     }
 }
 
+if (epicLaunchClientId is not null && epicOAuthUrl is not null)
+{
+    app.MapGet("/smart-launch", async ([FromServices] IFusionCache cache, string iss, string launch) =>
+    {
+        var rootPath = app.Configuration.GetValue<string>("BASE_PATH") ?? app.Urls.First();
+        var authUrl = $"{epicOAuthUrl}/authorize";
+        var client_id = epicLaunchClientId;
+        var scopes = "launch profile";
+        var redirect_uri = $"http://localhost:5032/accept";
+        var state = Guid.NewGuid().ToString("N");
+        var codeVerifier = Guid.NewGuid().ToString("N") + Guid.NewGuid().ToString("N");
+        var challenge = Convert.ToBase64String(SHA256.HashData(ASCIIEncoding.ASCII.GetBytes(codeVerifier))).TrimEnd('=').Replace('+', '-').Replace('/', '_');
+        await cache.SetAsync(state, new AppLaunchRequest(redirect_uri, client_id, state, iss, true, Code: codeVerifier), new() { Duration = TimeSpan.FromSeconds(120) });
+        var location = $"{authUrl}?scope={WebUtility.UrlEncode(scopes)}&response_type=code&aud={WebUtility.UrlEncode(iss)}&client_id={client_id}&redirect_uri={WebUtility.UrlEncode(redirect_uri)}&state={state}&launch={launch}&code_challenge={challenge}&code_challenge_method=S256";
+        return Results.Redirect(location);
+    });
+
+    app.MapGet("/accept", async (HttpContext context, [FromServices] IFusionCache cache, [FromServices] IHttpClientFactory httpClientFactory, string? code = null, string? state = null, string? session_state = null) =>
+    {
+        if (state == null)
+        {
+            return Results.BadRequest("Missing state parameter.");
+        }
+
+        if (code == null)
+        {
+            return Results.BadRequest("Missing code parameter.");
+        }
+
+        var request = await cache.TryGetAsync<AppLaunchRequest>(state);
+        if (!request.HasValue)
+        {
+            return Results.BadRequest("Invalid state parameter.");
+        }
+
+        var tokenEndpoint = $"{epicOAuthUrl}/token";
+
+        var form = new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+        { "grant_type", "authorization_code" },
+        { "code", code },
+        { "redirect_uri", request.Value.RedirectUri },
+        { "client_id", request.Value.ClientId },
+        { "code_verifier", request.Value.Code! },
+        });
+
+        using var client = httpClientFactory.CreateClient();
+        var response = await client.PostAsync(tokenEndpoint, form);
+
+        var responseBody = await response.Content.ReadAsStringAsync();
+        return Results.Content(responseBody, "application/json", statusCode: (int)response.StatusCode);
+    });
+}
+
 app.MapGet("/states", ([FromServices] IFusionCache cache) =>
 {
     return Results.Ok();
 });
 
 // create proxy for OIDC authorization endpoint that redirects to http://localhost:8080/realms/fhir/protocol/openid-connect/auth
-app.MapGet("/auth", async (HttpContext context, [FromServices] IFusionCache cache, string client_id, string scope, string redirect_uri, string state, string? launch = null, string? aud = null) =>
+app.MapGet("/auth", async (HttpContext context, [FromServices] IFusionCache cache, string client_id, string scope, string redirect_uri, string state, string? launch = null, string? aud = null, [FromServices] JsonWebTokenHandler? handler = null) =>
 {
-    var launchVals = launch != null ? Convert.FromBase64String(WebUtility.UrlDecode(launch)) : [];
-    var decryptedLaunch = launchVals.Length > 0 ? JsonSerializer.Deserialize(launchVals, AppJsonSerializerContext.Default.DictionaryStringString) : null;
+    bool isEpicLaunch = false;
+    Dictionary<string, string>? decryptedLaunch = null;
+
+    var launchDecoded = WebUtility.UrlDecode(launch);
+    byte[]? launchVals = default;
+    try
+    {
+        launchVals = launchDecoded != null ? ArrayPool<byte>.Shared.Rent(launchDecoded.Length) : null;
+        int bytesWritten = 0;
+        if (launchVals != null && Convert.TryFromBase64String(launchDecoded, launchVals, out bytesWritten))
+        {
+            decryptedLaunch = bytesWritten > 0
+                ? JsonSerializer.Deserialize(launchVals[..bytesWritten], AppJsonSerializerContext.Default.DictionaryStringString)
+                : null;
+        }
+        else if (handler != null && launch != null)
+        {
+            try
+            {
+                var jwt = handler.ReadJsonWebToken(launch);
+                if (jwt != null && jwt.Issuer == "urn:epic:apporchard.curprod")
+                {
+                    isEpicLaunch = true;
+                }
+            }
+            catch { }
+        }
+    }
+    finally
+    {
+        if (launchVals != null)
+        {
+            ArrayPool<byte>.Shared.Return(launchVals);
+        }
+    }
 
     var query = context.Request.Query.ToDictionary(x => x.Key, x => x.Value);
 
@@ -135,7 +226,7 @@ app.MapGet("/auth", async (HttpContext context, [FromServices] IFusionCache cach
         return Results.Redirect($"{redirect_uri}?state={state}&error=invalid_launch_parameter&error_description=Launch%20parameter%20is%20required%20when%20scope%20includes%20launch");
     }
 
-    if (azureConfig?.ScopeFormat is string azureScopeFormat)
+    if (!isEpicLaunch && azureConfig?.ScopeFormat is string azureScopeFormat)
     {
         var newScope = string.Join(' ', scope.Split(' ').Select(scope => scope.Contains('/') ? string.Format(azureScopeFormat, scope.Replace('/', '|')) : scope));
         query["scope"] = newScope;
@@ -155,15 +246,20 @@ app.MapGet("/auth", async (HttpContext context, [FromServices] IFusionCache cach
         return Results.Redirect($"{redirect_uri}?state={state}&error=missing_pkce_challenge&error_description=PKCE%20%20challenge%20parameter%20is%20required");
     }
 
-    await cache.SetAsync(codeChallenge, new AppLaunchRequest(redirect_uri, client_id, state, decryptedLaunch), new() { Duration = TimeSpan.FromSeconds(120) });
+    await cache.SetAsync(codeChallenge, new AppLaunchRequest(redirect_uri, client_id, state, aud ?? client_id, isEpicLaunch, decryptedLaunch), new() { Duration = TimeSpan.FromSeconds(120) });
 
-    query.Remove("launch");
+    if (!isEpicLaunch)
+    {
+        query.Remove("launch");
+    }
+
     if (aud == null)
     {
         query["aud"] = client_id;
     }
 
-    return Results.Redirect($"{GenerateAuthEndpoint()}?{string.Join('&', query.Select(x => x.Key == "code_challenge" ? $"{x.Key}={x.Value}" : $"{x.Key}={WebUtility.UrlEncode(x.Value)}"))}");
+    var location = $"{GenerateAuthEndpoint(isEpicLaunch)}?{string.Join('&', query.Select(x => x.Key == "code_challenge" ? $"{x.Key}={x.Value}" : $"{x.Key}={WebUtility.UrlEncode(x.Value)}"))}";
+    return Results.Redirect(location);
 });
 
 app.MapPost("/token", async (HttpContext context, [FromServices] IFusionCache cache, [FromServices] IRedisLockManager redlock, [FromServices] IHttpClientFactory httpClientFactory, [FromServices]JsonWebTokenHandler? handler = null) =>
@@ -175,6 +271,8 @@ app.MapPost("/token", async (HttpContext context, [FromServices] IFusionCache ca
     //string? code = null;
     string? updateLock = null;
     Dictionary<string, string>? launchValues = null;
+    string? audience = null;
+    bool isEpicLaunch = false;
 
     try
     {
@@ -187,15 +285,20 @@ app.MapPost("/token", async (HttpContext context, [FromServices] IFusionCache ca
                 await cache.RemoveAsync(challenge);
                 var exchangeRequest = maybeCodeExchange.Value;
                 launchValues = exchangeRequest.LaunchParameters;
-                if (!rewriteJwt && exchangeRequest.LaunchParameters?.Count > 0 && (exchangeRequest.SessionState != null || context.Request.Form.ContainsKey("session_state")) && azureConfig == null)
+                audience = exchangeRequest.Audience;
+                isEpicLaunch = exchangeRequest.IsEpicLaunch;
+                if (!isEpicLaunch)
                 {
-                    using var adminClient = httpClientFactory.CreateClient("keycloak");
-                    adminClient.BaseAddress = new Uri(keycloakUrl);
-                    updateLock = await UpdateUserProfileAttributesAndLock(adminClient, exchangeRequest.ClientId, exchangeRequest.SessionState ?? context.Request.Form["session_state"]!, realm, exchangeRequest.LaunchParameters, redlock);
-                }
-                else if (azureConfig?.TenantSecret is string azureTenantSecret)
-                {
-                    form["client_secret"] = azureTenantSecret;
+                    if (!rewriteJwt && exchangeRequest.LaunchParameters?.Count > 0 && (exchangeRequest.SessionState != null || context.Request.Form.ContainsKey("session_state")) && azureConfig == null)
+                    {
+                        using var adminClient = httpClientFactory.CreateClient("keycloak");
+                        adminClient.BaseAddress = new Uri(keycloakUrl);
+                        updateLock = await UpdateUserProfileAttributesAndLock(adminClient, exchangeRequest.ClientId, exchangeRequest.SessionState ?? context.Request.Form["session_state"]!, realm, exchangeRequest.LaunchParameters, redlock);
+                    }
+                    else if (azureConfig?.TenantSecret is string azureTenantSecret)
+                    {
+                        form["client_secret"] = azureTenantSecret;
+                    }
                 }
             }
             else
@@ -213,7 +316,7 @@ app.MapPost("/token", async (HttpContext context, [FromServices] IFusionCache ca
         }
 
         var rewrittenForm = new FormUrlEncodedContent(form);
-        var response = await client.PostAsync(GenerateTokenEndpoint(), rewrittenForm);
+        var response = await client.PostAsync(GenerateTokenEndpoint(isEpicLaunch), rewrittenForm);
 
         var responseBody = await response.Content.ReadAsStringAsync();
         if (JsonSerializer.Deserialize(responseBody, AppJsonSerializerContext.Default.BearerToken) is BearerToken bear)
@@ -229,7 +332,7 @@ app.MapPost("/token", async (HttpContext context, [FromServices] IFusionCache ca
                     updateLock = await UpdateUserProfileAttributesAndLock(client, form["client_id"], bear.session_state, realm, launchVals, redlock);
 
                     // get a new token
-                    var updatedResponse = await client.PostAsync(GenerateTokenEndpoint(), rewrittenForm);
+                    var updatedResponse = await client.PostAsync(GenerateTokenEndpoint(isEpicLaunch), rewrittenForm);
 
                     responseBody = await updatedResponse.Content.ReadAsStringAsync();
                 }
@@ -247,10 +350,14 @@ app.MapPost("/token", async (HttpContext context, [FromServices] IFusionCache ca
                 // create new bearer_token and sign with jwt
 
                 var newClaims = bearer.Claims.Where(x => copiedJwtClaims.Contains(x.Type)).ToDictionary(x => x.Type, x => (object)x.Value);
-                var scopes = bearer.Claims.FirstOrDefault(x => x.Type == "scp")?.Value.Split(' ').Select(x => x.Replace('|', '/')).ToArray() ?? [];
+                var scopes = bearer.Claims.FirstOrDefault(x => x.Type is "scp")?.Value.Split(' ').Select(x => x.Replace('|', '/')).ToArray() ?? [];
                 if (scopes.Length > 0)
                 {
                     newClaims["scope"] = string.Join(' ', scopes);
+                }
+                else if (bear.scope is not null)
+                {
+                    newClaims["scope"] = bear.scope;
                 }
 
                 if (launchValues != null)
@@ -261,10 +368,15 @@ app.MapPost("/token", async (HttpContext context, [FromServices] IFusionCache ca
                     }
                 }
 
+                if (isEpicLaunch && bear.patient is not null)
+                {
+                    newClaims["fhirUser"] = bear.patient;
+                }
+
                 var newToken = handler.CreateToken(new SecurityTokenDescriptor
                 {
                     Issuer = app.Urls.First(),
-                    Audience = bearer.Audiences.First(),
+                    Audience = audience ?? "http://fhirnexusapp",
                     Claims = newClaims,
                     Expires = bearer.ValidTo,
                     IncludeKeyIdInHeader = true,
@@ -288,9 +400,14 @@ app.MapPost("/token", async (HttpContext context, [FromServices] IFusionCache ca
 
 app.Run();
 
-string GenerateAuthEndpoint()
+string GenerateAuthEndpoint(bool isEpicLaunch)
 {
-    if (azureConfig == null)
+    if (isEpicLaunch)
+    {
+        //return "https://fhir.epic.com/interconnect-fhir-oauth/oauth2/authorize";
+        return "https://vendorservices.epic.com/interconnect-amcurprd-oauth/oauth2/authorize";
+    }
+    else if (azureConfig == null)
     {
         return $"{keycloakUrl}/realms/{realm}/protocol/openid-connect/auth";
     }
@@ -300,9 +417,13 @@ string GenerateAuthEndpoint()
     }
 }
 
-string GenerateTokenEndpoint()
+string GenerateTokenEndpoint(bool isEpicLaunch)
 {
-    if (azureConfig == null)
+    if (isEpicLaunch)
+    {
+        return "https://vendorservices.epic.com/interconnect-amcurprd-oauth/oauth2/token";
+    }
+    else if (azureConfig == null)
     {
         return $"{keycloakUrl}/realms/{realm}/protocol/openid-connect/token";
     }
@@ -422,13 +543,13 @@ internal sealed class RedlockConfigureOptions(IConfiguration configuration) : IC
 
 public record class OidcWellKnownEndpoint(string token_endpoint, string jwks_uri, string authorization_endpoint, string issuer);
 
-public record class AzureConfig(string TenantId, string? TenantSecret, string ScopeFormat);
+public record class AzureConfig(string TenantId, string ScopeFormat, string? TenantSecret = null);
 
-public record class BearerToken(string access_token, string token_type, int expires_in, string scope, string? refresh_token = null, string? id_token = null, string? session_state = null);
+public record class BearerToken(string access_token, string token_type, int expires_in, string scope, string? refresh_token = null, string? id_token = null, string? session_state = null, string? patient = null);
 
 public record class AppCodeExchangeRequest(string ClientId, Dictionary<string, string>? LaunchParameters = null, string? SessionState = null);
 
-public record class AppLaunchRequest(string RedirectUri, string ClientId, string State, Dictionary<string, string>? LaunchParameters = null, string? SessionState = null, string? UserId = null, string? Code = null);
+public record class AppLaunchRequest(string RedirectUri, string ClientId, string State, string Audience, bool IsEpicLaunch, Dictionary<string, string>? LaunchParameters = null, string? SessionState = null, string? UserId = null, string? Code = null);
 
 public record class TokenResponse(string access_token, string token_type, int expires_in, string scope, string refresh_token, string id_token);
 
